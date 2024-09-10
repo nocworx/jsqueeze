@@ -57,7 +57,6 @@ namespace Patchwork;
 * - Dead code removal (never used function)
 * - Munge primitives: var WINDOW=window, etc.
 */
-
 class JSqueeze
 {
     const
@@ -77,6 +76,8 @@ class JSqueeze
     $argFreq,
     $specialVarRx,
     $keepImportantComments,
+    $used_tree,
+    $local_tree,
 
     $varRx = '(?:[a-zA-Z_$])[a-zA-Z0-9_$]*',
     $reserved = array(
@@ -248,7 +249,19 @@ class JSqueeze
                     ++$i;
 
                     if ("\n" != $f[$i]) {
-                        isset($q[$f[$i]]) && ++$q[$f[$i]];
+                        if (isset($q[$f[$i]])) {
+                          // PHP 8.3 deprecated incrementing strings
+                          // @see https://www.php.net/manual/en/migration83.deprecated.php
+                          if (is_string($q[$f[$i]])) {
+                            // Skip these since it errors with "Argument #1 ($string) must be composed only of alphanumeric ASCII characters" 
+                            if ($q[$f[$i]] !== '\'' && $q[$f[$i]] !== '"') {
+                              $q[$f[$i]] = str_increment($q[$f[$i]]);
+                            }
+                          } else {
+                            // Keep same implementation as before
+                            ++$q[$f[$i]];
+                          }
+                        }
                         $s[] = '\\'.$f[$i];
                     }
                 } elseif ('[' == $f[$i] && "/'" == $instr) {
